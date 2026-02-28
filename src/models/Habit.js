@@ -1,0 +1,13 @@
+const mongoose = require('mongoose');
+
+const HabitSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    title: { type: String, required: true },
+    description: { type: String, default: "" },
+    frequency: { type: String, enum: ['daily', 'weekly'], default: 'daily' },
+    completedDates: [{ type: String }], // Store as YYYY-MM-DD
+    streak: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now }
+});
+
+module.exports = mongoose.model('Habit', HabitSchema);
