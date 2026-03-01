@@ -12,6 +12,7 @@ const UserSchema = new mongoose.Schema({
     notifications: { type: Boolean, default: true }
   },
   refreshToken: { type: String, default: null },
+  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   createdAt: { type: Date, default: Date.now }
 });
 

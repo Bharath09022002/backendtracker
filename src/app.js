@@ -10,6 +10,8 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const habitRoutes = require('./routes/habits');
 const socialRoutes = require('./routes/social');
+const friendRoutes = require('./routes/friends');
+const taskRoutes = require('./routes/tasks');
 
 const app = express();
 
@@ -28,6 +30,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/habits', habitRoutes);
 app.use('/api/social', socialRoutes);
+app.use('/api/friends', friendRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {
