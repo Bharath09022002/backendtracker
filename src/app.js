@@ -12,6 +12,7 @@ const habitRoutes = require('./routes/habits');
 const socialRoutes = require('./routes/social');
 const friendRoutes = require('./routes/friends');
 const taskRoutes = require('./routes/tasks');
+const messageRoutes = require('./routes/messages');
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/api/habits', habitRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {
