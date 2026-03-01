@@ -1,8 +1,14 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
+const { z } = require('zod');
 const Habit = require('../models/Habit');
 const auth = require('../middleware/auth');
 const router = express.Router();
+
+const habitSchema = z.object({
+    title: z.string().trim().min(1, 'Title is required'),
+    description: z.string().optional(),
+    frequency: z.enum(['Daily', 'Weekly']).optional()
+});
 
 // Get All Habits for User
 router.get('/', auth, async (req, res) => {
@@ -15,19 +21,17 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Create Habit
-router.post('/', auth, [
-    body('title').notEmpty().trim().withMessage('Title is required'),
-    body('frequency').optional().isIn(['Daily', 'Weekly']).withMessage('Invalid frequency')
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
+router.post('/', auth, async (req, res) => {
     try {
-        const { title, description, frequency } = req.body;
+        const validatedData = habitSchema.parse(req.body);
+        const { title, description, frequency } = validatedData;
         const habit = new Habit({ userId: req.user.id, title, description, frequency });
         await habit.save();
         res.status(201).json(habit);
     } catch (err) {
+        if (err instanceof z.ZodError) {
+            return res.status(400).json({ errors: err.errors });
+        }
         res.status(500).json({ error: err.message });
     }
 });

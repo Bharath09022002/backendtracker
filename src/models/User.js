@@ -11,10 +11,11 @@ const UserSchema = new mongoose.Schema({
     darkMode: { type: Boolean, default: false },
     notifications: { type: Boolean, default: true }
   },
+  refreshToken: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
-UserSchema.methods.comparePassword = async function(password) {
+UserSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.hashedPassword);
 };
 
