@@ -12,4 +12,7 @@ const HabitSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+HabitSchema.index({ userId: 1, createdAt: -1 });
+HabitSchema.index({ assignedBy: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Habit', HabitSchema);

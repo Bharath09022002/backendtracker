@@ -151,4 +151,40 @@ router.post('/logout', async (req, res) => {
     }
 });
 
+// Forgot Password (Dummy)
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+
+        // In a real app, send reset email here.
+        res.json({ message: 'If this email exists in our system, you will receive a password reset link shortly.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to process forgot password request' });
+    }
+});
+
+// Change Password (Authenticated)
+const auth = require('../middleware/auth');
+router.post('/change-password', auth, async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({ error: 'Both old and new passwords are required' });
+        }
+
+        const user = await User.findById(req.user.id);
+        const isMatch = await user.comparePassword(oldPassword);
+        if (!isMatch) return res.status(400).json({ error: 'Incorrect old password' });
+
+        user.hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.refreshToken = null; // Revoke sessions on password change
+        await user.save();
+
+        res.json({ message: 'Password changed successfully. Please log in again.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to change password' });
+    }
+});
+
 module.exports = router;

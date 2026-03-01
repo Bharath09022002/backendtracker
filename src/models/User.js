@@ -13,6 +13,11 @@ const UserSchema = new mongoose.Schema({
   },
   refreshToken: { type: String, default: null },
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  monthlySalary: { type: Number, default: 20000 },
+  currentBalance: { type: Number, default: 20000 },
+  salaryDate: { type: Number, default: 1 },
+  xp: { type: Number, default: 0 },
+  level: { type: Number, default: 1 },
   createdAt: { type: Date, default: Date.now }
 });
 

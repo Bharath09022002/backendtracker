@@ -13,6 +13,7 @@ const socialRoutes = require('./routes/social');
 const friendRoutes = require('./routes/friends');
 const taskRoutes = require('./routes/tasks');
 const messageRoutes = require('./routes/messages');
+const financeRoutes = require('./routes/finance');
 
 const app = express();
 
@@ -34,10 +35,13 @@ app.use('/api/social', socialRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/finance', financeRoutes);
+
+const pkg = require('../package.json');
 
 // Health Check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: '2.1.0 (Production Node.js)' });
+    res.json({ status: 'ok', version: pkg.version });
 });
 
 // Global Error Handler

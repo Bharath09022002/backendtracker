@@ -66,6 +66,13 @@ router.post('/conversations', auth, async (req, res) => {
 // @access  Private
 router.get('/:conversationId', auth, async (req, res) => {
     try {
+        const conversation = await Conversation.findById(req.params.conversationId);
+        if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+
+        if (!conversation.participants.includes(req.user.id)) {
+            return res.status(403).json({ error: 'Access denied: You are not a participant in this conversation' });
+        }
+
         const messages = await Message.find({
             conversationId: req.params.conversationId
         })
@@ -90,6 +97,13 @@ router.post('/:conversationId', auth, async (req, res) => {
     }
 
     try {
+        const conversation = await Conversation.findById(req.params.conversationId);
+        if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+
+        if (!conversation.participants.includes(req.user.id)) {
+            return res.status(403).json({ error: 'Access denied: You cannot send messages to this conversation' });
+        }
+
         const newMessage = new Message({
             conversationId: req.params.conversationId,
             sender: req.user.id,
@@ -99,10 +113,9 @@ router.post('/:conversationId', auth, async (req, res) => {
         const message = await newMessage.save();
 
         // Update conversation lastMessage and updatedAt
-        await Conversation.findByIdAndUpdate(req.params.conversationId, {
-            lastMessage: message._id,
-            updatedAt: Date.now()
-        });
+        conversation.lastMessage = message._id;
+        conversation.updatedAt = Date.now();
+        await conversation.save();
 
         res.json(message);
     } catch (err) {
