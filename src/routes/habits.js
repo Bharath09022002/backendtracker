@@ -7,7 +7,7 @@ const router = express.Router();
 const habitSchema = z.object({
     title: z.string().trim().min(1, 'Title is required'),
     description: z.string().optional(),
-    frequency: z.enum(['Daily', 'Weekly']).optional()
+    frequency: z.enum(['daily', 'weekly']).optional()
 });
 
 // Get All Habits for User
