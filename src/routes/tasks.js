@@ -25,8 +25,10 @@ router.post('/assign', auth, async (req, res) => {
         // Create a habit for the friend
         const habit = new Habit({
             userId: validatedData.friendId,
-            title: `[Task from ${user.fullName}] ${validatedData.title}`,
-            description: validatedData.description || '',
+            assignedBy: req.user.id,
+            isShared: true,
+            title: validatedData.title, // Clean title now that we have assignedBy
+            description: validatedData.description || `Assigned by ${user.fullName}`,
             frequency: 'daily',
         });
         await habit.save();
@@ -40,12 +42,40 @@ router.post('/assign', auth, async (req, res) => {
     }
 });
 
-// Get tasks assigned to me (habits from friends)
+// Get tasks I have assigned to others (to track their progress)
+router.get('/assigned-to-others', auth, async (req, res) => {
+    try {
+        const habits = await Habit.find({
+            assignedBy: req.user.id
+        }).populate('userId', 'fullName').sort({ createdAt: -1 });
+
+        // Map to a more useful format for the frontend
+        const result = habits.map(h => {
+            const today = new Date().toISOString().split('T')[0];
+            return {
+                id: h._id,
+                title: h.title,
+                friendName: h.userId.fullName,
+                isCompletedToday: h.completedDates.includes(today),
+                streak: h.streak
+            };
+        });
+
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get tasks assigned to me
 router.get('/assigned', auth, async (req, res) => {
     try {
         const habits = await Habit.find({
             userId: req.user.id,
-            title: { $regex: /^\[Task from/ }
+            $or: [
+                { assignedBy: { $exists: true } },
+                { title: { $regex: /^\[Task from/ } } // Backward compatibility
+            ]
         }).sort({ createdAt: -1 });
         res.json(habits);
     } catch (err) {

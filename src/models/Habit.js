@@ -7,6 +7,8 @@ const HabitSchema = new mongoose.Schema({
     frequency: { type: String, enum: ['daily', 'weekly'], default: 'daily' },
     completedDates: [{ type: String }], // Store as YYYY-MM-DD
     streak: { type: Number, default: 0 },
+    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    isShared: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
 });
 
