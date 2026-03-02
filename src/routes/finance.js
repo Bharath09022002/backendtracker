@@ -72,4 +72,44 @@ router.post('/expense', auth, async (req, res) => {
     }
 });
 
+// Edit Expense
+router.put('/expense/:id', auth, async (req, res) => {
+    try {
+        const data = expenseSchema.parse(req.body);
+        const expense = await Expense.findOne({ _id: req.params.id, userId: req.user.id });
+        if (!expense) return res.status(404).json({ error: 'Expense not found' });
+
+        const user = await User.findById(req.user.id);
+        // Adjust balance: add old amount back, subtract new amount
+        user.currentBalance = user.currentBalance + expense.amount - data.amount;
+
+        expense.title = data.title;
+        expense.amount = data.amount;
+        expense.category = data.category || 'other';
+
+        await expense.save();
+        await user.save();
+
+        res.json({ message: 'Expense updated', expense, newBalance: user.currentBalance });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// Delete Expense
+router.delete('/expense/:id', auth, async (req, res) => {
+    try {
+        const expense = await Expense.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+        if (!expense) return res.status(404).json({ error: 'Expense not found' });
+
+        const user = await User.findById(req.user.id);
+        user.currentBalance += expense.amount;
+        await user.save();
+
+        res.json({ message: 'Expense deleted', newBalance: user.currentBalance });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

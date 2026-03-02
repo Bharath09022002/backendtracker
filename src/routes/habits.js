@@ -69,12 +69,15 @@ router.put('/:id', auth, async (req, res) => {
         const { title, description, frequency } = validatedData;
 
         const habit = await Habit.findOneAndUpdate(
-            { _id: req.params.id, userId: req.user.id },
+            {
+                _id: req.params.id,
+                $or: [{ userId: req.user.id }, { assignedBy: req.user.id }]
+            },
             { title, description, frequency },
             { new: true }
         );
 
-        if (!habit) return res.status(404).json({ error: 'Habit not found' });
+        if (!habit) return res.status(404).json({ error: 'Habit not found or unauthorized' });
         res.json(habit);
     } catch (err) {
         if (err instanceof z.ZodError) {
@@ -87,8 +90,11 @@ router.put('/:id', auth, async (req, res) => {
 // Delete Habit
 router.delete('/:id', auth, async (req, res) => {
     try {
-        const habit = await Habit.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
-        if (!habit) return res.status(404).json({ error: 'Habit not found' });
+        const habit = await Habit.findOneAndDelete({
+            _id: req.params.id,
+            $or: [{ userId: req.user.id }, { assignedBy: req.user.id }]
+        });
+        if (!habit) return res.status(404).json({ error: 'Habit not found or unauthorized' });
         res.json({ message: 'Habit deleted successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
