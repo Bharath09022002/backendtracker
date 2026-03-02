@@ -19,6 +19,7 @@ const UserSchema = new mongoose.Schema({
   salaryDate: { type: Number, default: 1 },
   xp: { type: Number, default: 0 },
   level: { type: Number, default: 1 },
+  strikeTimestamps: [{ type: Date }],
   createdAt: { type: Date, default: Date.now }
 });
 
