@@ -13,7 +13,8 @@ const habitSchema = z.object({
 // Get All Habits for User
 router.get('/', auth, async (req, res) => {
     try {
-        const habits = await Habit.find({ userId: req.user.id });
+        const habits = await Habit.find({ userId: req.user.id })
+            .populate('assignedBy', 'fullName');
         res.json(habits);
     } catch (err) {
         res.status(500).json({ error: err.message });

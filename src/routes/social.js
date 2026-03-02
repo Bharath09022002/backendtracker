@@ -15,8 +15,8 @@ router.get('/feed', auth, async (req, res) => {
         const offset = parseInt(req.query.offset) || 0;
 
         const posts = await Post.find()
-            .populate('userId', 'fullName profilePicture')
-            .populate('comments.userId', 'fullName profilePicture')
+            .populate('userId', 'fullName profilePicture shortId')
+            .populate('comments.userId', 'fullName profilePicture shortId')
             .sort({ createdAt: -1 })
             .skip(offset)
             .limit(limit);

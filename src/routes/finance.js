@@ -12,15 +12,18 @@ const salarySchema = z.object({
 const expenseSchema = z.object({
     title: z.string().min(1),
     amount: z.number().min(0),
-    category: z.enum(['lifestyle', 'fixed', 'fun', 'other']).optional(),
+    category: z.enum(['lifestyle', 'fixed', 'fun', 'food', 'travel', 'entertainment', 'shopping', 'health', 'bills', 'other']).optional(),
     linkedActivityId: z.string().optional()
 });
 
 // Get Salary Summary
 router.get('/summary', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('monthlySalary currentBalance salaryDate');
-        const recentExpenses = await Expense.find({ userId: req.user.id }).sort({ date: -1 }).limit(10);
+        const [user, recentExpenses] = await Promise.all([
+            User.findById(req.user.id).select('monthlySalary currentBalance salaryDate'),
+            Expense.find({ userId: req.user.id }).sort({ date: -1 }).limit(10)
+        ]);
+
         res.json({
             salary: user.monthlySalary,
             balance: user.currentBalance,

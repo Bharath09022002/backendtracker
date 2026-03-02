@@ -51,7 +51,8 @@ router.post('/register', async (req, res) => {
         if (user) return res.status(400).json({ error: 'User already exists' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        user = new User({ email, hashedPassword, fullName });
+        const shortId = Math.random().toString(36).substring(2, 8).toUpperCase();
+        user = new User({ email, hashedPassword, fullName, shortId });
 
         const { accessToken, refreshToken } = generateTokens(user._id);
         user.refreshToken = refreshToken;

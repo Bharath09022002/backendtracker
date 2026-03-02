@@ -17,7 +17,15 @@ const updateProfileSchema = z.object({
 // Get Current User Profile
 router.get('/me', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('-hashedPassword');
+        let user = await User.findById(req.user.id).select('-hashedPassword');
+        if (!user.shortId) {
+            const shortId = Math.random().toString(36).substring(2, 8).toUpperCase();
+            user = await User.findByIdAndUpdate(
+                req.user.id,
+                { shortId },
+                { new: true }
+            ).select('-hashedPassword');
+        }
         res.json(user);
     } catch (err) {
         res.status(500).json({ error: err.message });
