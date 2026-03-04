@@ -1,4 +1,5 @@
 const socketIo = require('socket.io');
+const jwt = require('jsonwebtoken');
 let io;
 
 const init = (server) => {
@@ -9,16 +10,29 @@ const init = (server) => {
         }
     });
 
-    io.on('connection', (socket) => {
-        console.log('New client connected:', socket.id);
+    // Socket authentication middleware – verify JWT before allowing connection
+    io.use((socket, next) => {
+        const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+        if (!token) {
+            return next(new Error('Authentication required'));
+        }
+        try {
+            const decoded = jwt.verify(token, process.env.SECRET_KEY);
+            socket.userId = decoded.id;
+            next();
+        } catch (err) {
+            next(new Error('Invalid token'));
+        }
+    });
 
-        socket.on('join', (userId) => {
-            socket.join(userId);
-            console.log(`User ${userId} joined their private room`);
-        });
+    io.on('connection', (socket) => {
+        console.log('Authenticated client connected:', socket.userId);
+
+        // Auto-join the user's private room using their verified ID
+        socket.join(socket.userId);
 
         socket.on('disconnect', () => {
-            console.log('Client disconnected:', socket.id);
+            console.log('Client disconnected:', socket.userId);
         });
     });
 

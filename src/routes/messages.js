@@ -15,7 +15,8 @@ router.get('/conversations', auth, async (req, res) => {
         })
             .populate('participants', 'fullName email profilePicture')
             .populate('lastMessage')
-            .sort({ updatedAt: -1 });
+            .sort({ updatedAt: -1 })
+            .lean();
 
         res.json(conversations);
     } catch (err) {
@@ -96,7 +97,8 @@ router.get('/:conversationId', auth, async (req, res) => {
             conversationId: req.params.conversationId
         })
             .populate('sender', 'fullName profilePicture')
-            .sort({ timestamp: 1 });
+            .sort({ timestamp: 1 })
+            .lean();
 
         res.json(messages);
     } catch (err) {
@@ -136,7 +138,22 @@ router.post('/:conversationId', auth, async (req, res) => {
         conversation.updatedAt = Date.now();
         await conversation.save();
 
-        res.json(message);
+        // Emit real-time event to all participants
+        const socket = require('../utils/socket');
+        const populated = await Message.findById(message._id)
+            .populate('sender', 'fullName profilePicture')
+            .lean();
+        conversation.participants.forEach(participantId => {
+            const pid = participantId.toString();
+            if (pid !== req.user.id) {
+                socket.emitToUser(pid, 'new_message', {
+                    conversationId: req.params.conversationId,
+                    message: populated
+                });
+            }
+        });
+
+        res.json(populated);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

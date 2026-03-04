@@ -35,4 +35,7 @@ ConversationSchema.pre('save', function (next) {
     next();
 });
 
+// Index for finding conversations by participant, sorted by activity
+ConversationSchema.index({ participants: 1, updatedAt: -1 });
+
 module.exports = mongoose.model('Conversation', ConversationSchema);

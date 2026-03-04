@@ -63,8 +63,7 @@ router.post('/expense', auth, async (req, res) => {
         const user = await User.findById(req.user.id);
         user.currentBalance -= data.amount;
 
-        await expense.save();
-        await user.save();
+        await Promise.all([expense.save(), user.save()]);
 
         res.json({ message: 'Expense logged', expense, newBalance: user.currentBalance });
     } catch (err) {
@@ -87,12 +86,62 @@ router.put('/expense/:id', auth, async (req, res) => {
         expense.amount = data.amount;
         expense.category = data.category || 'other';
 
-        await expense.save();
-        await user.save();
+        await Promise.all([expense.save(), user.save()]);
 
         res.json({ message: 'Expense updated', expense, newBalance: user.currentBalance });
     } catch (err) {
         res.status(400).json({ error: err.message });
+    }
+});
+
+// Get Financial Analytics (Charts data)
+router.get('/analytics', auth, async (req, res) => {
+    try {
+        const { period } = req.query; // 'week', 'month', 'year'
+        const now = new Date();
+        let startDate;
+
+        if (period === 'week') {
+            startDate = new Date(now.setDate(now.getDate() - now.getDay())); // Start of week
+            startDate.setHours(0, 0, 0, 0);
+        } else if (period === 'month') {
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1); // Start of month
+        } else if (period === 'year') {
+            startDate = new Date(now.getFullYear(), 0, 1); // Start of year
+        } else {
+            startDate = new Date(now.setDate(now.getDate() - 30)); // Default last 30 days
+        }
+
+        const query = { userId: req.user.id, date: { $gte: startDate } };
+
+        // 1. Group by Category (Pie Chart)
+        const categoryData = await Expense.aggregate([
+            { $match: { userId: new require('mongoose').Types.ObjectId(req.user.id), date: { $gte: startDate } } },
+            { $group: { _id: '$category', total: { $sum: '$amount' } } },
+            { $sort: { total: -1 } }
+        ]);
+
+        // 2. Group by Date (Bar Chart)
+        let groupFormat;
+        if (period === 'year') {
+            groupFormat = { month: { $month: '$date' }, year: { $year: '$date' } };
+        } else {
+            groupFormat = { day: { $dayOfMonth: '$date' }, month: { $month: '$date' }, year: { $year: '$date' } };
+        }
+
+        const dailyData = await Expense.aggregate([
+            { $match: { userId: new require('mongoose').Types.ObjectId(req.user.id), date: { $gte: startDate } } },
+            { $group: { _id: groupFormat, total: { $sum: '$amount' } } },
+            { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+        ]);
+
+        res.json({
+            categories: categoryData,
+            timeSeries: dailyData,
+            period
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const { z } = require('zod');
 const Habit = require('../models/Habit');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
@@ -70,8 +71,7 @@ router.patch('/:id/toggle', auth, async (req, res) => {
             user.level = newLevel; // Might downgrade if they un-complete
         }
 
-        await user.save();
-        await habit.save();
+        await Promise.all([user.save(), habit.save()]);
 
         const socket = require('../utils/socket');
         socket.emitToUser(req.user.id, 'habit_updated', {

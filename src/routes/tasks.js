@@ -82,7 +82,7 @@ router.get('/assigned-to-others', auth, async (req, res) => {
     try {
         const habits = await Habit.find({
             assignedBy: req.user.id
-        }).populate('userId', 'fullName').sort({ createdAt: -1 });
+        }).populate('userId', 'fullName').sort({ createdAt: -1 }).lean();
 
         // Map to a more useful format for the frontend
         const result = habits.map(h => {

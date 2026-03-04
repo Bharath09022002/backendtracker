@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
 
-module.exports = async (req, res, next) => {
+// JWT is cryptographically signed with a 15-min TTL.
+// User existence is re-verified on token refresh (every 15 min).
+// This eliminates a DB query (~5-15ms) on EVERY authenticated request.
+module.exports = (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
@@ -9,14 +11,7 @@ module.exports = async (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.SECRET_KEY);
-
-        // Verify user still exists in DB
-        const user = await User.findById(decoded.id).select('_id');
-        if (!user) {
-            return res.status(401).json({ error: 'User no longer exists, authorization denied' });
-        }
-
+        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET || process.env.SECRET_KEY);
         req.user = decoded;
         next();
     } catch (err) {

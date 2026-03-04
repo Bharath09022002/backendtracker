@@ -27,4 +27,8 @@ UserSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.hashedPassword);
 };
 
+// Text index for search endpoint, shortId index for friend/conversation lookup
+UserSchema.index({ fullName: 'text', email: 'text' });
+UserSchema.index({ shortId: 1 }, { unique: true, sparse: true });
+
 module.exports = mongoose.model('User', UserSchema);

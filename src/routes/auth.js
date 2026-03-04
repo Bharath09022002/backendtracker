@@ -36,8 +36,16 @@ const refreshSchema = z.object({
 
 // Helper functions for tokens
 const generateTokens = (userId) => {
-    const accessToken = jwt.sign({ id: userId }, process.env.SECRET_KEY, { expiresIn: '15m' });
-    const refreshToken = jwt.sign({ id: userId }, process.env.SECRET_KEY, { expiresIn: '7d' });
+    const accessToken = jwt.sign(
+        { id: userId },
+        process.env.ACCESS_TOKEN_SECRET || process.env.SECRET_KEY,
+        { expiresIn: '15m' }
+    );
+    const refreshToken = jwt.sign(
+        { id: userId },
+        process.env.REFRESH_TOKEN_SECRET || process.env.SECRET_KEY,
+        { expiresIn: '7d' }
+    );
     return { accessToken, refreshToken };
 };
 

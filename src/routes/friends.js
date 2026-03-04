@@ -11,7 +11,7 @@ const friendSchema = z.object({
 // Get my friends list
 router.get('/list', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).populate('friends', 'fullName email _id');
+        const user = await User.findById(req.user.id).populate('friends', 'fullName email _id').lean();
         res.json(user.friends || []);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -43,13 +43,14 @@ router.post('/add', auth, async (req, res) => {
         }
 
         user.friends.push(friendId);
-        await user.save();
 
         // Mutual: also add current user to friend's list
+        const saves = [user.save()];
         if (!friend.friends.includes(req.user.id)) {
             friend.friends.push(req.user.id);
-            await friend.save();
+            saves.push(friend.save());
         }
+        await Promise.all(saves);
 
         res.json({ message: 'Friend added successfully', friend: { _id: friend._id, fullName: friend.fullName, email: friend.email } });
     } catch (err) {

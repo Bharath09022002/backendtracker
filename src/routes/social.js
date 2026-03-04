@@ -12,30 +12,40 @@ const commentSchema = z.object({
     text: z.string().trim().min(1, 'Comment text is required').max(500, 'Comment is too long')
 });
 
-// Get Feed (Paginated)
+// Get Feed (Cursor-based Pagination for O(1) performance)
 router.get('/feed', auth, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
-        const offset = parseInt(req.query.offset) || 0;
+        const before = req.query.before; // Cursor: timestamp to fetch posts before
 
-        const posts = await Post.find()
-            .populate('userId', 'fullName profilePicture shortId')
-            .populate('comments.userId', 'fullName profilePicture shortId')
-            .sort({ createdAt: -1 })
-            .skip(offset)
-            .limit(limit)
-            .lean();
+        const query = {};
+        if (before) {
+            query.createdAt = { $lt: new Date(before) };
+        }
 
-        const total = await Post.countDocuments();
+        // Run posts query and total count in parallel
+        const [posts, total] = await Promise.all([
+            Post.find(query)
+                .populate('userId', 'fullName profilePicture shortId')
+                .populate('comments.userId', 'fullName profilePicture shortId')
+                .sort({ createdAt: -1 })
+                .limit(limit)
+                .lean(),
+            Post.estimatedDocumentCount()
+        ]);
 
         const postsWithIsLiked = posts.map(post => ({
             ...post,
             isLiked: Array.isArray(post.likes) && post.likes.some(id => id.toString() === req.user.id)
         }));
 
+        // Calculate next cursor
+        const nextCursor = posts.length > 0 ? posts[posts.length - 1].createdAt : null;
+
         res.json({
             posts: postsWithIsLiked,
-            hasMore: offset + posts.length < total,
+            hasMore: posts.length === limit,
+            nextCursor,
             total
         });
     } catch (err) {
@@ -58,20 +68,31 @@ router.post('/posts', auth, async (req, res) => {
     }
 });
 
-// Toggle Like
+// Toggle Like (Atomic operation – no race conditions)
 router.post('/posts/:postId/like', auth, async (req, res) => {
     try {
-        const post = await Post.findById(req.params.postId);
-        if (!post) return res.status(404).json({ error: 'Post not found' });
+        const userId = req.user.id;
 
-        const index = post.likes.indexOf(req.user.id);
-        if (index === -1) {
-            post.likes.push(req.user.id);
-        } else {
-            post.likes.splice(index, 1);
+        // First try to add the like (if not already present)
+        let post = await Post.findOneAndUpdate(
+            { _id: req.params.postId, likes: { $ne: userId } },
+            { $addToSet: { likes: userId } },
+            { new: true, projection: { likes: 1 } }
+        ).lean();
+
+        let isLiked = true;
+
+        if (!post) {
+            // User already liked – remove the like
+            post = await Post.findOneAndUpdate(
+                { _id: req.params.postId },
+                { $pull: { likes: userId } },
+                { new: true, projection: { likes: 1 } }
+            ).lean();
+            isLiked = false;
         }
 
-        await post.save();
+        if (!post) return res.status(404).json({ error: 'Post not found' });
 
         const socket = require('../utils/socket');
         socket.emitToAll('post_stats_updated', {
@@ -79,7 +100,7 @@ router.post('/posts/:postId/like', auth, async (req, res) => {
             likesCount: post.likes.length
         });
 
-        res.json({ likes: post.likes.length, isLiked: index === -1 });
+        res.json({ likes: post.likes.length, isLiked });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
