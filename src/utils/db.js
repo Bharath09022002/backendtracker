@@ -11,7 +11,11 @@ const connectDB = async (retryCount = 0) => {
 
     try {
         await mongoose.connect(process.env.MONGODB_URL, {
-            dbName: process.env.DATABASE_NAME || 'personal_tracker'
+            dbName: process.env.DATABASE_NAME || 'personal_tracker',
+            maxPoolSize: 10,
+            minPoolSize: 2,
+            connectTimeoutMS: 10000,
+            socketTimeoutMS: 45000,
         });
         console.log('MongoDB Connected');
     } catch (err) {

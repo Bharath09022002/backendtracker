@@ -5,16 +5,18 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 
 const habitSchema = z.object({
-    title: z.string().trim().min(1, 'Title is required'),
-    description: z.string().optional(),
-    frequency: z.enum(['daily', 'weekly']).optional()
+    title: z.string().trim().min(1, 'Title is required').max(100, 'Title is too long'),
+    description: z.string().trim().optional().default(''),
+    frequency: z.enum(['daily', 'weekly']).optional().default('daily')
 });
 
 // Get All Habits for User
 router.get('/', auth, async (req, res) => {
     try {
         const habits = await Habit.find({ userId: req.user.id })
-            .populate('assignedBy', 'fullName');
+            .select('title description frequency completedDates streak assignedBy icon color category xpReward')
+            .populate('assignedBy', 'fullName')
+            .lean();
         res.json(habits);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -70,6 +72,14 @@ router.patch('/:id/toggle', auth, async (req, res) => {
 
         await user.save();
         await habit.save();
+
+        const socket = require('../utils/socket');
+        socket.emitToUser(req.user.id, 'habit_updated', {
+            habitId: habit._id,
+            xp: user.xp,
+            level: user.level
+        });
+
         res.json({ habit, xp: user.xp, level: user.level, leveledUp });
     } catch (err) {
         res.status(500).json({ error: err.message });

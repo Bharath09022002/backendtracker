@@ -20,8 +20,8 @@ const expenseSchema = z.object({
 router.get('/summary', auth, async (req, res) => {
     try {
         const [user, recentExpenses] = await Promise.all([
-            User.findById(req.user.id).select('monthlySalary currentBalance salaryDate'),
-            Expense.find({ userId: req.user.id }).sort({ date: -1 }).limit(10)
+            User.findById(req.user.id).select('monthlySalary currentBalance salaryDate').lean(),
+            Expense.find({ userId: req.user.id }).sort({ date: -1 }).limit(10).lean()
         ]);
 
         res.json({

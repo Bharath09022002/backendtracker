@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
 const connectDB = require('./utils/db');
 const logger = require('./utils/logger');
 
@@ -20,7 +21,17 @@ const app = express();
 // Connect to Database
 connectDB();
 
+// --- Rate Limiting ---
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per window
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+});
+
 // Global Middleware
+app.use(limiter);
 app.use(helmet());
 app.use(compression());
 app.use(cors());

@@ -5,7 +5,11 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 
 const postSchema = z.object({
-    content: z.string().min(1, 'Post content is required')
+    content: z.string().trim().min(1, 'Post content is required').max(1000, 'Post is too long')
+});
+
+const commentSchema = z.object({
+    text: z.string().trim().min(1, 'Comment text is required').max(500, 'Comment is too long')
 });
 
 // Get Feed (Paginated)
@@ -68,6 +72,13 @@ router.post('/posts/:postId/like', auth, async (req, res) => {
         }
 
         await post.save();
+
+        const socket = require('../utils/socket');
+        socket.emitToAll('post_stats_updated', {
+            postId: post._id,
+            likesCount: post.likes.length
+        });
+
         res.json({ likes: post.likes.length, isLiked: index === -1 });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -77,8 +88,8 @@ router.post('/posts/:postId/like', auth, async (req, res) => {
 // Add Comment
 router.post('/posts/:postId/comment', auth, async (req, res) => {
     try {
-        const { text } = req.body;
-        if (!text) return res.status(400).json({ error: 'Comment text is required' });
+        const validatedData = commentSchema.parse(req.body);
+        const { text } = validatedData;
 
         const post = await Post.findById(req.params.postId);
         if (!post) return res.status(404).json({ error: 'Post not found' });
@@ -86,9 +97,19 @@ router.post('/posts/:postId/comment', auth, async (req, res) => {
         post.comments.push({ userId: req.user.id, text });
         await post.save();
 
-        const updatedPost = await Post.findById(req.params.postId).populate('comments.userId', 'fullName profilePicture');
+        const updatedPost = await Post.findById(req.params.postId).populate('comments.userId', 'fullName profilePicture').lean();
+
+        const socket = require('../utils/socket');
+        socket.emitToAll('post_comments_updated', {
+            postId: post._id,
+            commentsCount: updatedPost.comments.length
+        });
+
         res.json(updatedPost.comments);
     } catch (err) {
+        if (err instanceof z.ZodError) {
+            return res.status(400).json({ errors: err.errors });
+        }
         res.status(500).json({ error: err.message });
     }
 });
