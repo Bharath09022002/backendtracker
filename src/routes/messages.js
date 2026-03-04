@@ -34,16 +34,34 @@ router.post('/conversations', auth, async (req, res) => {
         return res.status(400).json({ error: 'Participants are required' });
     }
 
-    // Add current user to participants if not already there
-    const allParticipants = [...new Set([...participants, req.user.id])];
-
     try {
+        // Resolve participant identifiers: accept both ObjectIds and shortIds
+        const mongoose = require('mongoose');
+        const resolvedParticipants = [];
+        for (const p of participants) {
+            const trimmed = p.trim();
+            if (mongoose.Types.ObjectId.isValid(trimmed) && trimmed.length === 24) {
+                // It's a valid ObjectId
+                const userExists = await User.findById(trimmed).select('_id');
+                if (!userExists) return res.status(404).json({ error: `User not found with ID: ${trimmed}` });
+                resolvedParticipants.push(trimmed);
+            } else {
+                // Try to find by shortId (case-insensitive)
+                const user = await User.findOne({ shortId: { $regex: new RegExp(`^${trimmed}$`, 'i') } }).select('_id');
+                if (!user) return res.status(404).json({ error: `User not found with ID: ${trimmed}` });
+                resolvedParticipants.push(user._id.toString());
+            }
+        }
+
+        // Add current user to participants if not already there
+        const allParticipants = [...new Set([...resolvedParticipants, req.user.id])];
+
         // If it's an individual chat, check if it already exists
         if (type === 'individual' && allParticipants.length === 2) {
             let conv = await Conversation.findOne({
                 type: 'individual',
                 participants: { $all: allParticipants, $size: 2 }
-            });
+            }).populate('participants', 'fullName email profilePicture');
             if (conv) return res.json(conv);
         }
 
@@ -54,7 +72,8 @@ router.post('/conversations', auth, async (req, res) => {
         });
 
         const conversation = await newConversation.save();
-        res.json(conversation);
+        const populated = await conversation.populate('participants', 'fullName email profilePicture');
+        res.json(populated);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

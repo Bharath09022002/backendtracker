@@ -19,12 +19,18 @@ router.get('/feed', auth, async (req, res) => {
             .populate('comments.userId', 'fullName profilePicture shortId')
             .sort({ createdAt: -1 })
             .skip(offset)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         const total = await Post.countDocuments();
 
+        const postsWithIsLiked = posts.map(post => ({
+            ...post,
+            isLiked: Array.isArray(post.likes) && post.likes.some(id => id.toString() === req.user.id)
+        }));
+
         res.json({
-            posts,
+            posts: postsWithIsLiked,
             hasMore: offset + posts.length < total,
             total
         });

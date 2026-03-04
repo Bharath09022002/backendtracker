@@ -43,20 +43,34 @@ router.patch('/:id/toggle', auth, async (req, res) => {
     try {
         const habit = await Habit.findOne({ _id: req.params.id, userId: req.user.id });
         if (!habit) return res.status(404).json({ error: 'Habit not found' });
+        const user = await User.findById(req.user.id);
 
         const dateIndex = habit.completedDates.indexOf(today);
+        let leveledUp = false;
+
         if (dateIndex > -1) {
             // Un-complete
             habit.completedDates.splice(dateIndex, 1);
             habit.streak = Math.max(0, habit.streak - 1);
+            user.xp = Math.max(0, user.xp - 25);
         } else {
             // Complete
             habit.completedDates.push(today);
             habit.streak += 1;
+            user.xp += 25;
         }
 
+        const newLevel = Math.floor(user.xp / 500) + 1;
+        if (newLevel > user.level) {
+            user.level = newLevel;
+            leveledUp = true;
+        } else {
+            user.level = newLevel; // Might downgrade if they un-complete
+        }
+
+        await user.save();
         await habit.save();
-        res.json(habit);
+        res.json({ habit, xp: user.xp, level: user.level, leveledUp });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

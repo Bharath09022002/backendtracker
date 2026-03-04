@@ -5,7 +5,7 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 
 const friendSchema = z.object({
-    friendId: z.string().length(24, 'Invalid User ID format')
+    friendId: z.string().min(1, 'User ID is required')
 });
 
 // Get my friends list
@@ -22,7 +22,15 @@ router.get('/list', auth, async (req, res) => {
 router.post('/add', auth, async (req, res) => {
     try {
         const validated = friendSchema.parse(req.body);
-        const { friendId } = validated;
+        let { friendId } = validated;
+
+        // Resolve shortId to ObjectId if needed
+        const mongoose = require('mongoose');
+        if (!(mongoose.Types.ObjectId.isValid(friendId) && friendId.length === 24)) {
+            const found = await User.findOne({ shortId: { $regex: new RegExp(`^${friendId}$`, 'i') } }).select('_id');
+            if (!found) return res.status(404).json({ error: 'User not found' });
+            friendId = found._id.toString();
+        }
 
         if (friendId === req.user.id) return res.status(400).json({ error: 'Cannot add yourself' });
 
@@ -73,10 +81,11 @@ router.get('/search', auth, async (req, res) => {
         const users = await User.find({
             $or: [
                 { fullName: { $regex: query, $options: 'i' } },
-                { email: { $regex: query, $options: 'i' } }
+                { email: { $regex: query, $options: 'i' } },
+                { shortId: { $regex: new RegExp(`^${query}$`, 'i') } }
             ],
             _id: { $ne: req.user.id } // Don't include self
-        }).select('fullName email _id profilePicture').limit(20);
+        }).select('fullName email _id profilePicture shortId').limit(20);
 
         res.json(users);
     } catch (err) {

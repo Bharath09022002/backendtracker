@@ -16,7 +16,7 @@ const ExpenseSchema = new mongoose.Schema({
     },
     category: {
         type: String,
-        enum: ['lifestyle', 'fixed', 'fun', 'other'],
+        enum: ['lifestyle', 'fixed', 'fun', 'food', 'travel', 'entertainment', 'shopping', 'health', 'bills', 'other'],
         default: 'other'
     },
     linkedActivityId: {
