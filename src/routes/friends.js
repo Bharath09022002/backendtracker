@@ -76,14 +76,17 @@ router.delete('/:friendId', auth, async (req, res) => {
 // Search users
 router.get('/search', auth, async (req, res) => {
     try {
-        const { query } = req.query;
+        let { query } = req.query;
         if (!query) return res.status(400).json({ error: 'Search query is required' });
+
+        // Sanitize regex input to prevent crashes
+        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
         const users = await User.find({
             $or: [
-                { fullName: { $regex: query, $options: 'i' } },
-                { email: { $regex: query, $options: 'i' } },
-                { shortId: { $regex: new RegExp(`^${query}$`, 'i') } }
+                { fullName: { $regex: escapedQuery, $options: 'i' } },
+                { email: { $regex: escapedQuery, $options: 'i' } },
+                { shortId: { $regex: new RegExp(`^${escapedQuery}$`, 'i') } }
             ],
             _id: { $ne: req.user.id } // Don't include self
         }).select('fullName email _id profilePicture shortId').limit(20);

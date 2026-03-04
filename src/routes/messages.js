@@ -36,22 +36,36 @@ router.post('/conversations', auth, async (req, res) => {
     }
 
     try {
-        // Resolve participant identifiers: accept both ObjectIds and shortIds
+        // Resolve participant identifiers: accept both ObjectIds, shortIds, and names
         const mongoose = require('mongoose');
         const resolvedParticipants = [];
         for (const p of participants) {
+            if (typeof p !== 'string') continue;
             const trimmed = p.trim();
+            if (!trimmed) continue;
+
             if (mongoose.Types.ObjectId.isValid(trimmed) && trimmed.length === 24) {
                 // It's a valid ObjectId
                 const userExists = await User.findById(trimmed).select('_id');
-                if (!userExists) return res.status(404).json({ error: `User not found with ID: ${trimmed}` });
-                resolvedParticipants.push(trimmed);
-            } else {
-                // Try to find by shortId (case-insensitive)
-                const user = await User.findOne({ shortId: { $regex: new RegExp(`^${trimmed}$`, 'i') } }).select('_id');
-                if (!user) return res.status(404).json({ error: `User not found with ID: ${trimmed}` });
-                resolvedParticipants.push(user._id.toString());
+                if (userExists) {
+                    resolvedParticipants.push(trimmed);
+                    continue;
+                }
             }
+
+            // Sanitize for regex if we try to search
+            const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+            // Try to find by shortId (case-insensitive) OR fullName if they typed a name
+            const user = await User.findOne({
+                $or: [
+                    { shortId: { $regex: new RegExp(`^${escaped}$`, 'i') } },
+                    { fullName: { $regex: new RegExp(`^${escaped}$`, 'i') } }
+                ]
+            }).select('_id');
+
+            if (!user) return res.status(404).json({ error: `User not found: ${trimmed}` });
+            resolvedParticipants.push(user._id.toString());
         }
 
         // Add current user to participants if not already there
