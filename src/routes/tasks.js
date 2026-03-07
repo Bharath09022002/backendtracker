@@ -11,8 +11,7 @@ const assignTaskSchema = z.object({
     description: z.string().optional(),
 });
 
-// Harmful keywords for safety filter
-const HARMFUL_KEYWORDS = ['kill', 'suicide', 'cut', 'slice', 'die', 'harm', 'end my life'];
+const { handleSafetyCheck } = require('../utils/safetyFilter');
 
 // Assign a task (habit) to a friend
 router.post('/assign', auth, async (req, res) => {
@@ -23,33 +22,12 @@ router.post('/assign', auth, async (req, res) => {
         const user = await User.findById(req.user.id);
 
         // 1. Safety Filter Check
-        const containsHarmful = HARMFUL_KEYWORDS.some(word => content.includes(word));
-
-        if (containsHarmful) {
-            const now = new Date();
-            const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-            // Clean up old strikes and add new one
-            user.strikeTimestamps = user.strikeTimestamps.filter(t => t > oneWeekAgo);
-            user.strikeTimestamps.push(now);
-
-            const strikeCount = user.strikeTimestamps.length;
-
-            if (strikeCount >= 5) {
-                // EXTREME ACTION: Delete account
-                await User.findByIdAndDelete(req.user.id);
-                // Also optionally delete their habits/posts, but being destructive here as requested
-                await Habit.deleteMany({ userId: req.user.id });
-                return res.status(403).json({
-                    error: 'ACCOUNT DELETED. Multiple violations of safety policy. Harmful content detected 5 times within 7 days.'
-                });
-            } else {
-                await user.save();
-                return res.status(403).json({
-                    error: `WARNING: Harmful content detected. This is strike ${strikeCount}/5. Reach 5 strikes in a week and your account will be PERMANENTLY DELETED.`,
-                    strikes: strikeCount
-                });
-            }
+        const safetyResult = await handleSafetyCheck(user, content);
+        if (safetyResult.isHarmful) {
+            return res.status(403).json({
+                error: safetyResult.error,
+                strikes: safetyResult.strikes
+            });
         }
 
         // Verify they are friends

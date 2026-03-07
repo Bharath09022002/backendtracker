@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const { handleSafetyCheck } = require('../utils/safetyFilter');
 
 // @route   GET /api/messages/conversations
 // @desc    Get all conversations for the current user
@@ -132,6 +133,15 @@ router.post('/:conversationId', auth, async (req, res) => {
     }
 
     try {
+        const user = await User.findById(req.user.id);
+        const safetyResult = await handleSafetyCheck(user, content);
+        if (safetyResult.isHarmful) {
+            return res.status(403).json({
+                error: safetyResult.error,
+                strikes: safetyResult.strikes
+            });
+        }
+
         const conversation = await Conversation.findById(req.params.conversationId);
         if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 

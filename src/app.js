@@ -15,6 +15,7 @@ const friendRoutes = require('./routes/friends');
 const taskRoutes = require('./routes/tasks');
 const messageRoutes = require('./routes/messages');
 const financeRoutes = require('./routes/finance');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use('/api/friends', friendRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/finance', financeRoutes);
+app.use('/api/admin', adminRoutes);
 
 const pkg = require('../package.json');
 

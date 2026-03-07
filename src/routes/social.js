@@ -1,8 +1,10 @@
 const express = require('express');
 const { z } = require('zod');
 const Post = require('../models/Post');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 const router = express.Router();
+const { handleSafetyCheck } = require('../utils/safetyFilter');
 
 const postSchema = z.object({
     content: z.string().trim().min(1, 'Post content is required').max(1000, 'Post is too long')
@@ -57,6 +59,14 @@ router.get('/feed', auth, async (req, res) => {
 router.post('/posts', auth, async (req, res) => {
     try {
         const validatedData = postSchema.parse(req.body);
+        const user = await User.findById(req.user.id);
+        const safetyResult = await handleSafetyCheck(user, validatedData.content);
+        if (safetyResult.isHarmful) {
+            return res.status(403).json({
+                error: safetyResult.error,
+                strikes: safetyResult.strikes
+            });
+        }
         const post = new Post({ userId: req.user.id, content: validatedData.content });
         await post.save();
         res.status(201).json(post);
@@ -111,6 +121,15 @@ router.post('/posts/:postId/comment', auth, async (req, res) => {
     try {
         const validatedData = commentSchema.parse(req.body);
         const { text } = validatedData;
+
+        const user = await User.findById(req.user.id);
+        const safetyResult = await handleSafetyCheck(user, text);
+        if (safetyResult.isHarmful) {
+            return res.status(403).json({
+                error: safetyResult.error,
+                strikes: safetyResult.strikes
+            });
+        }
 
         const post = await Post.findById(req.params.postId);
         if (!post) return res.status(404).json({ error: 'Post not found' });

@@ -11,6 +11,8 @@ const habitSchema = z.object({
     frequency: z.enum(['daily', 'weekly']).optional().default('daily')
 });
 
+const { handleSafetyCheck } = require('../utils/safetyFilter');
+
 // Get All Habits for User
 router.get('/', auth, async (req, res) => {
     try {
@@ -29,6 +31,17 @@ router.post('/', auth, async (req, res) => {
     try {
         const validatedData = habitSchema.parse(req.body);
         const { title, description, frequency } = validatedData;
+
+        const user = await User.findById(req.user.id);
+        const content = (title + ' ' + (description || '')).toLowerCase();
+        const safetyResult = await handleSafetyCheck(user, content);
+        if (safetyResult.isHarmful) {
+            return res.status(403).json({
+                error: safetyResult.error,
+                strikes: safetyResult.strikes
+            });
+        }
+
         const habit = new Habit({ userId: req.user.id, title, description, frequency });
         await habit.save();
         res.status(201).json(habit);
@@ -91,6 +104,16 @@ router.put('/:id', auth, async (req, res) => {
     try {
         const validatedData = habitSchema.parse(req.body);
         const { title, description, frequency } = validatedData;
+
+        const user = await User.findById(req.user.id);
+        const content = (title + ' ' + (description || '')).toLowerCase();
+        const safetyResult = await handleSafetyCheck(user, content);
+        if (safetyResult.isHarmful) {
+            return res.status(403).json({
+                error: safetyResult.error,
+                strikes: safetyResult.strikes
+            });
+        }
 
         const habit = await Habit.findOneAndUpdate(
             {
