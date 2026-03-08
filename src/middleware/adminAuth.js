@@ -8,8 +8,9 @@ const adminAuth = async (req, res, next) => {
             return res.status(401).json({ error: 'Authentication required. No token provided.' });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.userId);
+        const secret = process.env.ACCESS_TOKEN_SECRET || process.env.SECRET_KEY || 'your_super_secret_jwt_key_here_change_it_in_production';
+        const decoded = jwt.verify(token, secret);
+        const user = await User.findById(decoded.id);
 
         if (!user) {
             return res.status(401).json({ error: 'User not found.' });

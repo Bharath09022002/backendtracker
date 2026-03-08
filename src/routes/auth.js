@@ -93,6 +93,7 @@ router.post('/login', authRateLimit, async (req, res) => {
 
         const { accessToken, refreshToken } = generateTokens(user._id);
         user.refreshToken = refreshToken;
+        user.lastLogin = new Date(); // Track login time
         await user.save();
 
         res.json({

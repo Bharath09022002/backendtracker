@@ -16,6 +16,7 @@ const taskRoutes = require('./routes/tasks');
 const messageRoutes = require('./routes/messages');
 const financeRoutes = require('./routes/finance');
 const adminRoutes = require('./routes/admin');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/ai', aiRoutes);
 
 const pkg = require('../package.json');
 

@@ -21,7 +21,8 @@ const UserSchema = new mongoose.Schema({
   level: { type: Number, default: 1 },
   strikeTimestamps: [{ type: Date }],
   isAdmin: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  lastLogin: { type: Date, default: Date.now }
 });
 
 UserSchema.methods.comparePassword = async function (password) {

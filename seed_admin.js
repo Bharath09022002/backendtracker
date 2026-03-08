@@ -7,7 +7,9 @@ const DB_URI = process.env.MONGODB_URL || process.env.MONGODB_URI || 'mongodb://
 
 async function seedAdmin() {
     try {
-        await mongoose.connect(DB_URI);
+        await mongoose.connect(DB_URI, {
+            dbName: process.env.DATABASE_NAME || 'personal_tracker'
+        });
         console.log('Connected to DB');
 
         const email = 'bharath@gmail.com';
